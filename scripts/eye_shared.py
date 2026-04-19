@@ -34,7 +34,14 @@ def _build_eye_base(vertices, radius, z_rotate_deg):
     eye.rotation_euler[0] = math.radians(90)
     bpy.ops.object.transform_apply(rotation=True)
 
-    # Fill face, flatten Y completely — no dome, no shadow ever
+    # Add material slots FIRST (materials.clear() resets face indices to 0)
+    eye.data.materials.clear()
+    from utils import make_mat
+    eye.data.materials.append(make_mat("eye stroke",       (0.0, 0.0, 0.0)))  # slot 0 unused
+    eye.data.materials.append(make_mat("eye inside left",  (1.0, 1.0, 1.0)))  # slot 1
+    eye.data.materials.append(make_mat("eye inside right", (1.0, 1.0, 1.0)))  # slot 2
+
+    # Fill, flatten Y — NO inset (inset causes jagged scalloping after subdivision)
     to_edit()
     bpy.ops.mesh.edge_face_add()
     bpy.ops.mesh.select_all(action="SELECT")
@@ -43,23 +50,28 @@ def _build_eye_base(vertices, radius, z_rotate_deg):
     # Mirror to right eye
     bpy.ops.mesh.select_all(action="SELECT")
     bpy.ops.mesh.symmetrize(direction="NEGATIVE_X")
-    to_object()
 
-    # Add material slots BEFORE assigning face indices
-    # (materials.clear() resets face material_index to 0 — must add slots first)
-    eye.data.materials.clear()
-    from utils import make_mat
-    eye.data.materials.append(make_mat("eye stroke",       (0.0, 0.0, 0.0)))  # slot 0 unused
-    eye.data.materials.append(make_mat("eye inside left",  (1.0, 1.0, 1.0)))  # slot 1
-    eye.data.materials.append(make_mat("eye inside right", (1.0, 1.0, 1.0)))  # slot 2
-
-    # Assign ALL faces to UV shader — no geometry border ring
-    # The UV shader color ramp handles the dark border smoothly
-    to_edit()
+    # All faces → UV shader (border handled by shader color ramp)
     bm = bmesh.from_edit_mesh(eye.data)
     for f in bm.faces:
         f.material_index = 1 if f.calc_center_median().x <= 0 else 2
     bmesh.update_edit_mesh(eye.data)
+
+    # UV: project from front view — gives circular UVs centered at (0.5,0.5)
+    # This is more reliable than smart_project for radial shader gradients
+    bpy.ops.mesh.select_all(action="SELECT")
+    for area in bpy.context.screen.areas:
+        if area.type == 'VIEW_3D':
+            for region in area.regions:
+                if region.type == 'WINDOW':
+                    with bpy.context.temp_override(area=area, region=region):
+                        bpy.ops.uv.project_from_view(
+                            camera_bounds=False,
+                            correct_aspect=True,
+                            scale_to_bounds=True
+                        )
+                    break
+            break
 
     # UV unwrap each eye as its own island
     bpy.ops.mesh.select_all(action="DESELECT")
@@ -254,21 +266,21 @@ def _build_uv_eye_shader(side="left"):
     norm.inputs[1].default_value = 2.0
     lk(vlen.outputs["Value"], norm.inputs[0])
 
-    # Color ramp: pupil → iris ring → sclera → border ring
-    # NOTE: dark border must be at 0.78 max — UV smart project clips beyond that
+    # Color ramp: pupil → iris ring → sclera → dark border
+    # project_from_view UV gives circular coords — border at 0.85 is reliable
     cr = N("ShaderNodeValToRGB", 260, 120)
     cr.color_ramp.interpolation = "EASE"
     cr.color_ramp.elements[0].position = 0.00
-    cr.color_ramp.elements[0].color    = (0.0,  0.0,  0.0,  1.0)  # pupil center
-    cr.color_ramp.elements[1].position = 0.26
+    cr.color_ramp.elements[0].color    = (0.0,  0.0,  0.0,  1.0)  # pupil
+    cr.color_ramp.elements[1].position = 0.28
     cr.color_ramp.elements[1].color    = (0.0,  0.0,  0.0,  1.0)  # pupil edge
-    e1 = cr.color_ramp.elements.new(0.35)
+    e1 = cr.color_ramp.elements.new(0.38)
     e1.color = (0.10, 0.35, 0.80, 1.0)                             # iris ring
-    e2 = cr.color_ramp.elements.new(0.46)
+    e2 = cr.color_ramp.elements.new(0.50)
     e2.color = (1.0,  1.0,  1.0,  1.0)                             # white sclera
-    e3 = cr.color_ramp.elements.new(0.62)
-    e3.color = (1.0,  1.0,  1.0,  1.0)                             # sclera outer edge
-    e4 = cr.color_ramp.elements.new(0.78)
+    e3 = cr.color_ramp.elements.new(0.78)
+    e3.color = (1.0,  1.0,  1.0,  1.0)                             # sclera outer
+    e4 = cr.color_ramp.elements.new(0.92)
     e4.color = (0.0,  0.0,  0.0,  1.0)                             # dark border ring
     lk(norm.outputs["Value"], cr.inputs["Fac"])
 

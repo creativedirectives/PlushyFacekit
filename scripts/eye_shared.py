@@ -333,6 +333,12 @@ def _create_blink_anim(eye):
     sk = eye.data.shape_keys
     if not sk:
         return
+
+    # Open frames use CONSTANT — eye holds fully open until exact blink frame.
+    # Bezier between open keyframes causes premature blinking (eye starts closing early).
+    OPEN_FRAMES  = {1, 45, 250}   # value=0, hold constant
+    BLINK_FRAMES = {30, 130}      # value=1, smooth bezier
+
     schedule = {
         "eye close left":  [(1,0.0),(30,1.0),(45,0.0),(130,1.0),(145,0.0),(250,0.0)],
         "eye close right": [(1,0.0),(30,1.0),(45,0.0),(130,1.0),(145,0.0),(250,0.0)],
@@ -344,7 +350,30 @@ def _create_blink_anim(eye):
         for frame, value in frames:
             kb.value = value
             kb.keyframe_insert(data_path="value", frame=frame)
+
+    # Set interpolation: CONSTANT on open frames, BEZIER on blink frames
     if sk.animation_data and sk.animation_data.action:
-        apply_smooth_interp(sk.animation_data.action)
+        action = sk.animation_data.action
+        try:
+            for layer in action.layers:
+                for strip in layer.strips:
+                    for cb in strip.channelbags:
+                        for fc in cb.fcurves:
+                            for kp in fc.keyframe_points:
+                                f = round(kp.co[0])
+                                if f in OPEN_FRAMES:
+                                    kp.interpolation = 'CONSTANT'
+                                else:
+                                    kp.interpolation = 'BEZIER'
+                                    kp.easing = 'EASE_IN_OUT'
+        except Exception:
+            try:
+                for fc in action.fcurves:
+                    for kp in fc.keyframe_points:
+                        f = round(kp.co[0])
+                        kp.interpolation = 'CONSTANT' if f in OPEN_FRAMES else 'BEZIER'
+            except Exception:
+                pass
+
     scene.frame_set(1)
-    print("  OK blink animation keyframed.")
+    print("  OK blink animation keyframed (CONSTANT open, BEZIER blink).")

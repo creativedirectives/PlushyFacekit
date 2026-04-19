@@ -179,8 +179,9 @@ def _bind_eye_mesh(eye, arm):
 
 def _add_crescent_keys(eye):
     """
-    Blink closes into a horizontal sine-arc crescent.
-    Each eye side's verts compress to a curved line — not a flat squish.
+    Blink pinches eye to a thin horizontal arc — all black.
+    Verts compress to a slight upward curve at eye center Z.
+    Object-space shader naturally goes black at the compressed thin line.
     """
     set_active(eye)
     bpy.ops.object.shape_key_add(from_mix=False)
@@ -190,8 +191,9 @@ def _add_crescent_keys(eye):
         ("eye close left",  -0.6,  -1),
         ("eye close right",  0.6,   1),
     ]
-    r           = 0.35
-    crescent_h  = 0.07
+    eye_z  = 0.1
+    eye_r  = 0.35
+    arc_h  = 0.06   # slight upward arc gives visible thickness
 
     for key_name, cx, x_sign in eye_defs:
         bpy.ops.object.shape_key_add(from_mix=False)
@@ -204,13 +206,13 @@ def _add_crescent_keys(eye):
         for v in bm.verts:
             if (x_sign < 0 and v.co.x > -0.1) or (x_sign > 0 and v.co.x < 0.1):
                 continue
-            x_norm = max(-1.0, min(1.0, (v.co.x - cx) / r))
-            v.co.z = 0.1 + crescent_h * math.sin(math.pi * (x_norm + 1) / 2)
+            x_norm = max(-1.0, min(1.0, (v.co.x - cx) / eye_r))
+            v.co.z = eye_z + arc_h * math.sin(math.pi * (x_norm + 1) / 2)
         bmesh.update_edit_mesh(eye.data)
         to_object()
 
     eye.active_shape_key_index = 0
-    print("  OK crescent shape keys added.")
+    print("  OK pinch shape keys added.")
 
 
 # ── UV EMISSION SHADER ────────────────────────────────────────────────────────

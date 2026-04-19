@@ -255,20 +255,21 @@ def _build_uv_eye_shader(side="left"):
     lk(vlen.outputs["Value"], norm.inputs[0])
 
     # Color ramp: pupil → iris ring → sclera → border ring
+    # NOTE: dark border must be at 0.78 max — UV smart project clips beyond that
     cr = N("ShaderNodeValToRGB", 260, 120)
     cr.color_ramp.interpolation = "EASE"
     cr.color_ramp.elements[0].position = 0.00
-    cr.color_ramp.elements[0].color    = (0.0,  0.0,  0.0,  1.0)  # pupil
-    cr.color_ramp.elements[1].position = 0.28
+    cr.color_ramp.elements[0].color    = (0.0,  0.0,  0.0,  1.0)  # pupil center
+    cr.color_ramp.elements[1].position = 0.26
     cr.color_ramp.elements[1].color    = (0.0,  0.0,  0.0,  1.0)  # pupil edge
-    e1 = cr.color_ramp.elements.new(0.38)
+    e1 = cr.color_ramp.elements.new(0.35)
     e1.color = (0.10, 0.35, 0.80, 1.0)                             # iris ring
-    e2 = cr.color_ramp.elements.new(0.50)
+    e2 = cr.color_ramp.elements.new(0.46)
     e2.color = (1.0,  1.0,  1.0,  1.0)                             # white sclera
-    e3 = cr.color_ramp.elements.new(0.82)
-    e3.color = (1.0,  1.0,  1.0,  1.0)                             # sclera outer
-    e4 = cr.color_ramp.elements.new(0.95)
-    e4.color = (0.0,  0.0,  0.0,  1.0)                             # dark border
+    e3 = cr.color_ramp.elements.new(0.62)
+    e3.color = (1.0,  1.0,  1.0,  1.0)                             # sclera outer edge
+    e4 = cr.color_ramp.elements.new(0.78)
+    e4.color = (0.0,  0.0,  0.0,  1.0)                             # dark border ring
     lk(norm.outputs["Value"], cr.inputs["Fac"])
 
     # Specular bubble — offset upper-right in UV space

@@ -34,36 +34,31 @@ def _build_eye_base(vertices, radius, z_rotate_deg):
     eye.rotation_euler[0] = math.radians(90)
     bpy.ops.object.transform_apply(rotation=True)
 
-    # Fill + single inset for border ring
+    # Fill face, flatten Y completely — no dome, no shadow ever
     to_edit()
     bpy.ops.mesh.edge_face_add()
-    bpy.ops.mesh.inset(thickness=0.045, depth=0)
-
-    # Flatten completely — no Y depth, no dome shadow
     bpy.ops.mesh.select_all(action="SELECT")
     bpy.ops.transform.resize(value=(1, 0, 1), orient_type="GLOBAL")
 
-    # Mirror to right eye FIRST
+    # Mirror to right eye
     bpy.ops.mesh.select_all(action="SELECT")
     bpy.ops.mesh.symmetrize(direction="NEGATIVE_X")
     to_object()
 
-    # Add material slots BEFORE assigning indices (clear() resets indices to 0)
+    # Add material slots BEFORE assigning face indices
+    # (materials.clear() resets face material_index to 0 — must add slots first)
     eye.data.materials.clear()
     from utils import make_mat
-    eye.data.materials.append(make_mat("eye stroke",       (0.0, 0.0, 0.0)))
-    eye.data.materials.append(make_mat("eye inside left",  (1.0, 1.0, 1.0)))
-    eye.data.materials.append(make_mat("eye inside right", (1.0, 1.0, 1.0)))
+    eye.data.materials.append(make_mat("eye stroke",       (0.0, 0.0, 0.0)))  # slot 0 unused
+    eye.data.materials.append(make_mat("eye inside left",  (1.0, 1.0, 1.0)))  # slot 1
+    eye.data.materials.append(make_mat("eye inside right", (1.0, 1.0, 1.0)))  # slot 2
 
-    # Now assign by VERTEX COUNT — inner filled polygon has the most verts
+    # Assign ALL faces to UV shader — no geometry border ring
+    # The UV shader color ramp handles the dark border smoothly
     to_edit()
     bm = bmesh.from_edit_mesh(eye.data)
-    max_verts = max(len(f.verts) for f in bm.faces)
     for f in bm.faces:
-        if len(f.verts) >= max_verts * 0.8:
-            f.material_index = 1 if f.calc_center_median().x <= 0 else 2
-        else:
-            f.material_index = 0
+        f.material_index = 1 if f.calc_center_median().x <= 0 else 2
     bmesh.update_edit_mesh(eye.data)
 
     # UV unwrap each eye as its own island

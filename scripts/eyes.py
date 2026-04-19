@@ -1,12 +1,13 @@
 """
 eyes.py — PlushyFaceKit
-Public eye builders. Both call shared helpers — zero duplication.
+Two eye style options. Both share all helpers from eye_shared.py.
 
-  build_almond_eyes(config)  — 6-vert hexagon base, 30deg rotation
-  build_circle_eyes(config)  — 16-vert circle base, no rotation
+  build_circle_eyes(config)   — 16-vert smooth circle
+  build_hexagon_eyes(config)  — 6-vert hexagon, points east/west (◇ horizontal)
+                                subdivision softens into a wide organic oval
 """
 import bpy
-from utils import set_active, to_object, to_pose
+from utils      import set_active, to_object, to_pose
 from eye_shared import (
     _build_eye_base,
     _create_eye_rig,
@@ -18,7 +19,7 @@ from eye_shared import (
 
 
 def _finish_eye(eye, arm):
-    """Shared final steps after mesh is built."""
+    """Shared final steps after mesh is built — same for every style."""
     _add_crescent_keys(eye)
     _bind_eye_mesh(eye, arm)
     _build_uv_eye_shader("left")
@@ -28,21 +29,26 @@ def _finish_eye(eye, arm):
     to_pose()
 
 
-def build_almond_eyes(config):
-    """Hexagon (6-vert) base — gives a softer almond/oval silhouette."""
-    eye = _build_eye_base(vertices=6, radius=0.35, z_rotate_deg=30)
-
+def build_circle_eyes(config):
+    """
+    Smooth round eyes — 16-vert circle base.
+    Subdivision gives clean circular silhouette.
+    """
     arm = _create_eye_rig()
+    eye = _build_eye_base(vertices=16, radius=0.35, z_rotate_deg=0)
     _finish_eye(eye, arm)
-    print("OK almond eyes built.")
+    print("OK circle eyes built.")
     return eye, arm
 
 
-def build_circle_eyes(config):
-    """Circle (16-vert) base — perfectly round eye."""
-    eye = _build_eye_base(vertices=16, radius=0.35, z_rotate_deg=0)
-
+def build_hexagon_eyes(config):
+    """
+    Wide expressive eyes — 6-vert hexagon, z_rotate=0 puts sharp points
+    east and west (◇ orientation). Subdivision rounds the corners into
+    a soft elongated shape — distinct contrast to the circle style.
+    """
     arm = _create_eye_rig()
+    eye = _build_eye_base(vertices=6, radius=0.35, z_rotate_deg=0)
     _finish_eye(eye, arm)
-    print("OK circle eyes built.")
+    print("OK hexagon eyes built.")
     return eye, arm

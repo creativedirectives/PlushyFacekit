@@ -23,7 +23,7 @@ import export as exporter; importlib.reload(exporter)
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 CONFIG = {
-    "eye_style":    "circle",      # "circle" | "almond"
+    "eye_style":    "circle",      # "circle" | "hexagon"
     "nose_style":   "oval",        # "oval"   | "triangle"
     "mouth_style":  "crescent",    # "crescent" | "line" | "lips"
     "lips_heart":   True,
@@ -47,8 +47,8 @@ def main():
         bpy.data.objects.remove(cube, do_unlink=True)
 
     if CONFIG["generate_eyes"]:
-        if CONFIG["eye_style"] == "almond":
-            eyes.build_almond_eyes(CONFIG)
+        if CONFIG["eye_style"] == "hexagon":
+            eyes.build_hexagon_eyes(CONFIG)
         else:
             eyes.build_circle_eyes(CONFIG)
 
